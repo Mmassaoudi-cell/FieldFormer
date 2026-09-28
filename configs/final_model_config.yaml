@@ -1,0 +1,76 @@
+# FROZEN CONFIGURATION -- do not modify based on test-set results.
+# Selected per MODEL_SELECTION_REPORT.md; hyperparameters chosen by
+# validation-only Optuna TPE search (scripts/tune_final_model.py, 25 trials,
+# MedianPruner). From this point forward, only genuine bugs may be fixed;
+# no architecture or hyperparameter change may be made in response to test
+# performance (Section 11 of the research protocol).
+
+model_name: "BalancedFusion (Candidate C) on FieldFormer-SSM backbone"
+selected_from: MODEL_SELECTION_REPORT.md
+
+architecture:
+  packet_encoder:
+    name: FieldFormer
+    type: transformer_encoder_mlm
+    d_model: 128
+    n_layers: 2
+    n_heads: 4
+    max_len: 320
+    vocab: shared BPE + 256 hex-byte tokens (data_audit/shared_tokenizer.json)
+    pretraining_objective: masked_token_prediction   # NOT generation -- see SOURCE_WEAKNESS_ANALYSIS.md item 0
+    mask_prob: 0.15
+    params: 1_490_000
+    checkpoint: candidates/fieldformer/encoder.pt
+
+  temporal_backbone:
+    name: SSMBackbone (selective state-space, simplified Mamba/S4D-style)
+    d_model: 192          # tuned (Optuna best)
+    n_layers: 2           # tuned (Optuna best)
+    d_state: 16
+
+  pooling: attention_pool          # ablation: no_attention_pool (last-timestep)
+  classification_head:
+    type: linear
+    loss: focal_loss
+    focal_gamma: 2.2029             # tuned (Optuna best)
+    class_balanced_alpha: true      # inverse-frequency, normalized to n_classes
+  reconstruction_head:
+    type: linear_per_timestep
+    loss: mse
+    trained_on: benign_only_windows_in_batch
+    lambda_recon: 0.35374           # tuned (Optuna best)
+
+data:
+  dataset: Frazao et al. 2019 Modbus/TCP process-automation PCAPs (real, external_datasets/Frazao2019_ModbusTCP_ICS_PCAPS)
+  classes: [benign, mitm, modbus_query_flood, modbus_query_flood2, icmp_flood, tcp_syn_flood]
+  window_size: 32                   # matches source paper's N=32
+  max_bytes_per_packet: 300
+  split: capture-file / contiguous-time-block (70/15/15 train/val/test), never random row shuffling
+  split_manifest: DATA_SPLIT_MANIFEST.csv
+  onset_correction: scripts/find_onset.py (rate-jump detection; see REPRODUCTION_REPORT.md Section 2)
+  benign_class_balancing: scripts/add_more_benign.py
+
+training:
+  optimizer: Adam
+  learning_rate: 0.00087941          # tuned (Optuna best)
+  batch_size: 64                     # tuned (Optuna best)
+  epochs: 15
+  model_selection_metric: validation_macro_f1
+  early_stopping: best validation macro-F1 checkpoint retained
+  seeds_for_final_reporting: [0, 1, 2, 3, 4]   # minimum per Section 22
+
+anomaly_detection:
+  score: benign-only reconstruction MSE (same backbone/head as classification)
+  calibration_protocol: benign-only train/calibrate(val)/test; threshold maximizes calibration F1
+  known_limitation: F1-optimal threshold under attack-dominated calibration is documented to trade precision for recall (see REPRODUCTION_REPORT.md); balanced-calibration variant also computed for comparison
+
+thresholds_and_evaluation:
+  primary_classification_metric: macro_f1
+  primary_anomaly_metric: roc_auc (threshold-independent; f1/fpr also reported at the calibrated operating point)
+
+not_reproduced:
+  - "Modbus2023" (CIC Modbus Dataset 2023): requires third-party registration; user declined. Not substituted.
+  - Full LM-embedding pipeline for DNP3: scope-reduced to flow-feature-level cross-protocol benchmark (see build_dnp3_features.py docstring) given session time constraints.
+
+frozen_on: 2026-09-12
+frozen_by: automated research pipeline, this repository
