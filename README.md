@@ -96,7 +96,6 @@ Each script writes its raw results to a local `results/` directory as JSON/CSV; 
 @article{massaoudi_fieldformer,
   author  = {Massaoudi, Mohamed and Ez Eddin, Maymouna},
   title   = {Joint Representation Learning for Industrial Control Network Threat Analysis: A Compact State-Space Alternative to Generative Packet-Language-Model Pretraining},
-  journal = {IEEE Transactions (under review)},
   year    = {2026}
 }
 ```
