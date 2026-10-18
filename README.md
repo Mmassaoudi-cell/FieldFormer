@@ -1,6 +1,6 @@
 # FieldFormer
 
-Source code for a compact, joint representation-learning architecture for industrial control network threat analysis. FieldFormer replaces a large generative packet-language-model pretraining stage with a masked-token packet encoder combined with a lightweight selective state-space (SSM) temporal backbone, trained jointly for multiclass attack classification and semisupervised anomaly detection on ICS/IIoT network traffic (Modbus/TCP process-automation traffic, DNP3, and IIoT protocols).
+Source code for a compact, joint representation-learning architecture for industrial control network threat analysis. FieldFormer is a lightweight selective state-space (SSM) temporal backbone, trained jointly for multiclass attack classification and semisupervised anomaly detection on ICS/IIoT network traffic (Modbus/TCP process-automation traffic, DNP3, and IIoT protocols).
 
 ## Repository structure
 
